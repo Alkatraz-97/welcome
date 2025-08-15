@@ -19,6 +19,7 @@
     .slider::-webkit-slider-thumb { appearance:none; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.18) }
     pre#msg { margin:0; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px; text-align:left }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -64,12 +65,41 @@
         .join('\n');
     }
 
+    function launchHearts() {
+      const duration = 3 * 1000;
+      const end = Date.now() + duration;
+
+      (function frame() {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          shapes: ['heart'],
+          colors: ['#ff69b4', '#ff1493', '#ff0000']
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          shapes: ['heart'],
+          colors: ['#ff69b4', '#ff1493', '#ff0000']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      })();
+    }
+
     playBtn.addEventListener('click', () => {
       audio.volume = +vol.value;
       audio.play().catch(()=>{});
       startCard.style.display = 'none';
       msg.textContent = encodeToMorse(PLAIN);
       messageCard.style.display = 'block';
+      launchHearts();
     });
 
     vol.addEventListener('input', () => {
