@@ -14,23 +14,27 @@
     .hidden{ display:none }
     .row{ display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap }
     .slider { width: 160px; }
+    input[type="password"]{ width: 220px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:var(--text); }
+    .hint{ color: var(--muted); font-size:.9rem }
     video { width:100%; max-width:420px; border-radius:16px; border:1px solid rgba(255,255,255,.12); max-height: 70vh; object-fit: cover }
     #fx { position: fixed; inset: 0; pointer-events: none; z-index: 9999; display:none }
   </style>
 </head>
 <body>
-  <script>
-    // Password protection
-    const password = prompt("Enter password:");
-    if (password !== "achala") {
-      alert("Incorrect password. Access denied.");
-      document.body.innerHTML = "";
-      throw new Error("Access denied");
-    }
-  </script>
   <canvas id="fx"></canvas>
   <div class="wrap">
-    <section id="page1" class="card">
+    <!-- PAGE 0: Password gate -->
+    <section id="gate" class="card">
+      <h2>Enter Password 🔐</h2>
+      <div class="row" style="margin:10px 0 12px">
+        <input id="pw" type="password" placeholder="Password" autocomplete="off" />
+        <button id="pwBtn" class="btn">Unlock</button>
+      </div>
+      <div id="pwErr" class="hint hidden">That doesn't look right. Try again. ❤️</div>
+    </section>
+
+    <!-- PAGE 1: Message only -->
+    <section id="page1" class="card hidden" aria-hidden="true">
       <div class="lead">Agar Tum Mujhse Puchte Ho K
 Tum Kitni Baar
 Mere Khayal mein Aaye
@@ -39,9 +43,11 @@ Kyunki Tum Aaye
 Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
 
 (There is a surprise waiting for you after this ❤️)</div>
-      <a id="nextBtn" href="#surprise" class="btn hidden">Continue →</a>
+      <a id="nextBtn" href="#surprise" class="btn hidden" style="margin-top:10px">Continue →</a>
     </section>
-    <section id="page2" class="card hidden">
+
+    <!-- PAGE 2: Video + music + hearts -->
+    <section id="page2" class="card hidden" aria-hidden="true">
       <h2>I Love You ❤️</h2>
       <div class="row">
         <button id="playBtn" class="btn">▶ Play</button>
@@ -49,10 +55,143 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
       </div>
       <video id="video" src="video.mp4" playsinline webkit-playsinline controls></video>
       <audio id="player" src="music.mp3" preload="metadata" loop></audio>
+      <div class="hint" style="margin-top:6px">If audio doesn't start, tap Play once (mobile browsers require interaction).</div>
     </section>
   </div>
+
   <script>
-    // Existing JavaScript for navigation, media, and confetti remains unchanged.
+    // ===== Password Gate =====
+    const GATE_PW = 'achala';
+    const gate = document.getElementById('gate');
+    const pw = document.getElementById('pw');
+    const pwBtn = document.getElementById('pwBtn');
+    const pwErr = document.getElementById('pwErr');
+
+    function openPage1(){
+      gate.classList.add('hidden');
+      page1.classList.remove('hidden');
+      page1.setAttribute('aria-hidden','false');
+      // reveal "Continue" after delay
+      setTimeout(()=> nextBtn.classList.remove('hidden'), 12000);
+    }
+
+    function tryUnlock(){
+      const ok = (pw.value || '').trim() === GATE_PW;
+      if(ok){ openPage1(); }
+      else { pwErr.classList.remove('hidden'); pw.select(); }
+    }
+    pwBtn.addEventListener('click', tryUnlock);
+    pw.addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+
+    // ===== Simple router for Page 2 =====
+    const page1 = document.getElementById('page1');
+    const page2 = document.getElementById('page2');
+    const nextBtn = document.getElementById('nextBtn');
+    const fx = document.getElementById('fx');
+
+    function showPage2(){
+      page1.classList.add('hidden');
+      page1.setAttribute('aria-hidden','true');
+      page2.classList.remove('hidden');
+      page2.setAttribute('aria-hidden','false');
+      fx.style.display = 'block';
+    }
+    addEventListener('hashchange', ()=>{ if(location.hash==='#surprise') showPage2(); });
+
+    // ===== Media + Hearts on Page 2 =====
+    const audio = document.getElementById('player');
+    const video = document.getElementById('video');
+    const playBtn = document.getElementById('playBtn');
+    const vol = document.getElementById('vol');
+
+    playBtn.addEventListener('click', ()=>{
+      const v = +vol.value; audio.volume=v; video.volume=v;
+      fx.style.display = 'block';
+      audio.play().catch(()=>{}); video.play().catch(()=>{});
+      burstHearts(12000);
+    });
+    vol.addEventListener('input', ()=>{ const v=+vol.value; audio.volume=v; video.volume=v; });
+
+    // ===== Heart Confetti (canvas, mobile-friendly) =====
+    const ctx = fx.getContext('2d', { alpha: true });
+    function resize(){
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      fx.width=Math.floor(innerWidth*dpr); fx.height=Math.floor(innerHeight*dpr);
+      fx.style.width=innerWidth+'px'; fx.style.height=innerHeight+'px';
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    addEventListener('resize', resize, {passive:true}); resize();
+
+    const USE_PATH2D = typeof Path2D !== 'undefined';
+    let HEART_PATH=null;
+    function buildHeart(){
+      const path=new Path2D();
+      const pts=[]; let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+      for(let i=0;i<=240;i++){
+        const t=(i/240)*Math.PI*2;
+        const x=16*Math.sin(t)**3;
+        const y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+        const px=x, py=-y;
+        pts.push([px,py]);
+        if(px<minX)minX=px; if(px>maxX)maxX=px; if(py<minY)minY=py; if(py>maxY)maxY=py;
+      }
+      const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+      path.moveTo(pts[0][0]-cx, pts[0][1]-cy);
+      for(let i=1;i<pts.length;i++) path.lineTo(pts[i][0]-cx, pts[i][1]-cy);
+      path.closePath();
+      return path;
+    }
+    function drawHeartFallback(x,y,size,rot,color){
+      const s=size/2;
+      ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
+      ctx.fillStyle=color; ctx.beginPath();
+      ctx.moveTo(0, s*0.6);
+      ctx.bezierCurveTo(0, -s*0.6, -s, -s*0.1, -s, s*0.3);
+      ctx.bezierCurveTo(-s, s*0.9, 0, s*1.4, 0, s*1.8);
+      ctx.bezierCurveTo(0, s*1.4, s, s*0.9, s, s*0.3);
+      ctx.bezierCurveTo(s, -s*0.1, 0, -s*0.6, 0, s*0.6);
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    function drawHeart(x,y,size,rot,color){
+      if(USE_PATH2D){
+        if(!HEART_PATH) HEART_PATH=buildHeart();
+        const scale=size/32;
+        ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.scale(scale,scale);
+        ctx.fillStyle=color; ctx.fill(HEART_PATH); ctx.restore();
+      } else {
+        drawHeartFallback(x,y,size,rot,color);
+      }
+    }
+
+    const COLORS=['#ff6b9a','#ff3b81','#ff1e56','#ff8fb3'];
+    const particles=[]; let spawning=false, until=0, last=0;
+    function spawn(){
+      if(particles.length>900) return;
+      const size=16+Math.random()*22;
+      particles.push({
+        x: Math.random()*innerWidth,
+        y: -20-Math.random()*60,
+        vx:(Math.random()*0.6-0.3), vy:0.28+Math.random()*0.45,
+        rot:Math.random()*Math.PI*2, vr:(Math.random()*0.02-0.01),
+        size, color:COLORS[(Math.random()*COLORS.length)|0], life:0, ttl:9+Math.random()*7
+      });
+    }
+    function loop(t){
+      const now=t||performance.now();
+      const dt=Math.min(0.05,(now-last)/1000||0.016); last=now;
+      ctx.clearRect(0,0,innerWidth,innerHeight);
+      if(spawning){ const rate=260*dt; for(let i=0;i<rate;i++) spawn(); if(now>until) spawning=false; }
+      for(let i=particles.length-1; i>=0; i--){
+        const p=particles[i];
+        p.vy+=0.012*dt; p.x+=p.vx*(60*dt); p.y+=p.vy*(60*dt);
+        p.rot+=p.vr*(60*dt); p.life+=dt;
+        drawHeart(p.x,p.y,p.size,p.rot,p.color);
+        if(p.y>innerHeight+60 || p.life>p.ttl) particles.splice(i,1);
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+    function burstHearts(ms=12000){ spawning=true; until=performance.now()+ms; }
   </script>
 </body>
 </html>
