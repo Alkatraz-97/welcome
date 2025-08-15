@@ -52,24 +52,24 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     const audio=document.getElementById('player'),video=document.getElementById('video'),playBtn=document.getElementById('playBtn'),vol=document.getElementById('vol');
     playBtn.addEventListener('click',()=>{
       audio.volume=+vol.value;video.volume=+vol.value;audio.play();video.play();
-      launchConfetti();
+      launchHeartConfetti();
     });
     vol.addEventListener('input',()=>{audio.volume=+vol.value;video.volume=+vol.value});
 
-    function launchConfetti(){
-      const duration=5*1000;
-      const end=Date.now()+duration;
+    function launchHeartConfetti(){
+      const heart = confetti.shapeFromText?.('❤️') || 'circle';
+      const duration = 5 * 1000;
+      const end = Date.now() + duration;
       (function frame(){
         confetti({
-          particleCount:6,
-          angle:90,
-          spread:60,
-          origin:{x:Math.random(),y:0},
-          shapes:['💖'],
-          scalar:1.8,
-          colors:['#ff4b6e','#ffb3c1','#ffffff']
+          particleCount: 8,
+          spread: 60,
+          origin: { x: Math.random(), y: 0 },
+          shapes: [heart],
+          scalar: 2,
+          colors: ['#ff4b6e', '#ffb3c1', '#ffffff']
         });
-        if(Date.now()<end){requestAnimationFrame(frame);}
+        if(Date.now() < end){ requestAnimationFrame(frame); }
       })();
     }
   </script>
