@@ -57,17 +57,17 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     vol.addEventListener('input',()=>{audio.volume=+vol.value;video.volume=+vol.value});
 
     function launchHeartConfetti(){
-      const heartPath = new Path2D("M 0 0 C -5 -5, -10 -15, 0 -20 C 10 -15, 5 -5, 0 0 Z");
+      const heartPath = confetti.shapeFromText('❤');
       const myConfetti = confetti.create(fx, { resize: true, useWorker: true });
       const duration = 5 * 1000;
       const end = Date.now() + duration;
       (function frame(){
         myConfetti({
-          particleCount: 6,
-          spread: 60,
+          particleCount: 8,
+          spread: 70,
           origin: { x: Math.random(), y: 0 },
-          shapes: [{ type: 'custom', path: heartPath }],
-          scalar: 2.5,
+          shapes: [heartPath],
+          scalar: 3,
           colors: ['#ff4b6e', '#ffb3c1', '#ffffff']
         });
         if(Date.now() < end){ requestAnimationFrame(frame); }
