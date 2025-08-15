@@ -15,7 +15,8 @@
     .row{ display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap }
     .slider { width: 160px; }
     video { width:100%; max-width:420px; border-radius:16px; border:1px solid rgba(255,255,255,.12); max-height: 70vh; object-fit: cover }
-    #fx { position: fixed; inset: 0; pointer-events: none; z-index: 1; display:none }
+    /* Make the confetti canvas sit ABOVE everything, even video on iOS */
+    #fx { position: fixed; inset: 0; pointer-events: none; z-index: 9999; display:none }
   </style>
 </head>
 <body>
@@ -38,26 +39,33 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
         <button id="playBtn" class="btn">▶ Play</button>
         <label class="row">Volume <input id="vol" class="slider" type="range" min="0" max="1" step="0.01" value="0.85"></label>
       </div>
-      <video id="video" src="video.mp4" onerror="this.nextElementSibling.classList.remove('hidden')"></video>
+      <!-- playsinline avoids iOS overlay that can cover the canvas; controls are optional -->
+      <video id="video" src="video.mp4" playsinline webkit-playsinline controls onerror="this.nextElementSibling.classList.remove('hidden')"></video>
       <div class="hidden">(Add video.mp4)</div>
       <audio id="player" src="music.mp3" preload="metadata" loop></audio>
     </section>
   </div>
   <script>
+    // -------- page routing --------
     const page1=document.getElementById('page1'),page2=document.getElementById('page2'),nextBtn=document.getElementById('nextBtn'),fx=document.getElementById('fx');
     setTimeout(()=>nextBtn.classList.remove('hidden'),12000);
-    function showPage(){if(location.hash==="#surprise"){page1.classList.add('hidden');page2.classList.remove('hidden');fx.style.display='block'}}
+    function showPage(){
+      if(location.hash==="#surprise"){page1.classList.add('hidden');page2.classList.remove('hidden');fx.style.display='block'}
+    }
     addEventListener('hashchange',showPage);showPage();
 
+    // -------- media controls --------
     const audio=document.getElementById('player'),video=document.getElementById('video'),playBtn=document.getElementById('playBtn'),vol=document.getElementById('vol');
     playBtn.addEventListener('click',()=>{
       const v=+vol.value; audio.volume=v; video.volume=v;
+      fx.style.display='block'; // ensure visible even if hash routing failed
       audio.play().catch(()=>{}); video.play().catch(()=>{});
-      burstHearts(9000);
+      burstHearts(15000); // longer burst so it’s obvious
     });
     vol.addEventListener('input',()=>{const v=+vol.value; audio.volume=v; video.volume=v});
 
-    const ctx=fx.getContext('2d');
+    // -------- HEART CONFETTI (custom canvas; no external lib) --------
+    const ctx=fx.getContext('2d', { alpha: true });
     function resize(){
       const dpr=Math.min(window.devicePixelRatio||1,2);
       fx.width=Math.floor(innerWidth*dpr); fx.height=Math.floor(innerHeight*dpr);
@@ -66,6 +74,8 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     }
     addEventListener('resize',resize,{passive:true}); resize();
 
+    // Fallback if Path2D is not supported (older iOS/Android)
+    const USE_PATH2D = typeof Path2D !== 'undefined';
     let HEART_PATH=null;
     function buildHeart(){
       const path=new Path2D();
@@ -84,42 +94,58 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
       path.closePath();
       return path;
     }
+    function drawHeartFallback(x,y,size,rot,color){
+      // Bezier heart fallback, no Path2D required
+      const s=size/2;
+      ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
+      ctx.fillStyle=color; ctx.beginPath();
+      ctx.moveTo(0, s*0.6);
+      ctx.bezierCurveTo(0, -s*0.6, -s, -s*0.1, -s, s*0.3);
+      ctx.bezierCurveTo(-s, s*0.9, 0, s*1.4, 0, s*1.8);
+      ctx.bezierCurveTo(0, s*1.4, s, s*0.9, s, s*0.3);
+      ctx.bezierCurveTo(s, -s*0.1, 0, -s*0.6, 0, s*0.6);
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
     function drawHeart(x,y,size,rot,color){
-      if(!HEART_PATH) HEART_PATH=buildHeart();
-      const scale=size/32;
-      ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.scale(scale,scale);
-      ctx.fillStyle=color; ctx.fill(HEART_PATH); ctx.restore();
+      if(USE_PATH2D){
+        if(!HEART_PATH) HEART_PATH=buildHeart();
+        const scale=size/32; // parametric width ≈ 32
+        ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.scale(scale,scale);
+        ctx.fillStyle=color; ctx.fill(HEART_PATH); ctx.restore();
+      } else {
+        drawHeartFallback(x,y,size,rot,color);
+      }
     }
 
     const COLORS=['#ff6b9a','#ff3b81','#ff1e56','#ff8fb3'];
     const particles=[]; let spawning=false, until=0, last=0;
     function spawn(){
-      if(particles.length>720) return;
-      const size=14+Math.random()*18;
+      if(particles.length>900) return; // cap for smoothness
+      const size=16+Math.random()*22;
       particles.push({
         x: Math.random()*innerWidth,
         y: -20-Math.random()*60,
-        vx:(Math.random()*0.6-0.3), vy:0.3+Math.random()*0.5,
+        vx:(Math.random()*0.6-0.3), vy:0.28+Math.random()*0.45,
         rot:Math.random()*Math.PI*2, vr:(Math.random()*0.02-0.01),
-        size, color:COLORS[(Math.random()*COLORS.length)|0], life:0, ttl:7+Math.random()*7
+        size, color:COLORS[(Math.random()*COLORS.length)|0], life:0, ttl:9+Math.random()*7
       });
     }
     function loop(t){
       const now=t||performance.now();
-      const dt=Math.min(0.033,(now-last)/1000||0.016); last=now;
+      const dt=Math.min(0.05,(now-last)/1000||0.016); last=now; // slightly larger clamp works better on mobile
       ctx.clearRect(0,0,innerWidth,innerHeight);
-      if(spawning){ const rate=240*dt; for(let i=0;i<rate;i++) spawn(); if(now>until) spawning=false; }
-      for(let i=particles.length-1;i>=0;i--){
+      if(spawning){ const rate=260*dt; for(let i=0;i<rate;i++) spawn(); if(now>until) spawning=false; }
+      for(let i=particles.length-1; i>=0; i--){
         const p=particles[i];
-        p.vy+=0.016*dt; p.x+=p.vx*(60*dt); p.y+=p.vy*(60*dt);
+        p.vy+=0.012*dt; p.x+=p.vx*(60*dt); p.y+=p.vy*(60*dt);
         p.rot+=p.vr*(60*dt); p.life+=dt;
         drawHeart(p.x,p.y,p.size,p.rot,p.color);
-        if(p.y>innerHeight+40||p.life>p.ttl) particles.splice(i,1);
+        if(p.y>innerHeight+60 || p.life>p.ttl) particles.splice(i,1);
       }
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
-    function burstHearts(ms=8000){ spawning=true; until=performance.now()+ms; }
+    function burstHearts(ms=12000){ spawning=true; until=performance.now()+ms; }
   </script>
 </body>
 </html>
