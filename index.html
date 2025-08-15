@@ -43,14 +43,27 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
       <audio id="player" src="music.mp3" preload="metadata" loop></audio>
     </section>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script>
     const page1=document.getElementById('page1'),page2=document.getElementById('page2'),nextBtn=document.getElementById('nextBtn'),fx=document.getElementById('fx');
     setTimeout(()=>nextBtn.classList.remove('hidden'),12000);
     function showPage(){if(location.hash==="#surprise"){page1.classList.add('hidden');page2.classList.remove('hidden');fx.style.display='block'}}
     addEventListener('hashchange',showPage);showPage();
     const audio=document.getElementById('player'),video=document.getElementById('video'),playBtn=document.getElementById('playBtn'),vol=document.getElementById('vol');
-    playBtn.addEventListener('click',()=>{audio.volume=+vol.value;video.volume=+vol.value;audio.play();video.play();});
+    playBtn.addEventListener('click',()=>{
+      audio.volume=+vol.value;video.volume=+vol.value;audio.play();video.play();
+      launchConfetti();
+    });
     vol.addEventListener('input',()=>{audio.volume=+vol.value;video.volume=+vol.value});
+
+    function launchConfetti(){
+      const duration=5*1000;
+      const end=Date.now()+duration;
+      (function frame(){
+        confetti({particleCount:5,angle:90,spread:55,origin:{x:Math.random(),y:0},shapes:['heart'],colors:['#ff4b6e','#ffb3c1','#ffffff']});
+        if(Date.now()<end){requestAnimationFrame(frame);}
+      })();
+    }
   </script>
 </body>
 </html>
