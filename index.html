@@ -30,7 +30,7 @@
         <input id="pw" type="password" placeholder="Password" autocomplete="off" />
         <button id="pwBtn" class="btn">Unlock</button>
       </div>
-      <div id="pwErr" class="hint hidden">That doesn't look right. Try again. ❤️</div>
+      <div id="pwErr" class="hint hidden" aria-live="polite">That doesn't look right. Try again. ❤️</div>
     </section>
 
     <!-- PAGE 1: Message only -->
@@ -66,6 +66,11 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     const pw = document.getElementById('pw');
     const pwBtn = document.getElementById('pwBtn');
     const pwErr = document.getElementById('pwErr');
+    let pwFails = 0;
+
+    function toBinary(str){
+      return [...str].map(ch=>ch.charCodeAt(0).toString(2).padStart(8,'0')).join(' ');
+    }
 
     function openPage1(){
       gate.classList.add('hidden');
@@ -78,7 +83,14 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     function tryUnlock(){
       const ok = (pw.value || '').trim() === GATE_PW;
       if(ok){ openPage1(); }
-      else { pwErr.classList.remove('hidden'); pw.select(); }
+      else {
+        pwFails += 1;
+        if (pwFails === 1) {
+          pwErr.innerHTML = `That doesn't look right. Try again. ❤️<br><span>Hint (binary): <code>${toBinary(GATE_PW)}</code></span>`;
+        }
+        pwErr.classList.remove('hidden');
+        pw.select();
+      }
     }
     pwBtn.addEventListener('click', tryUnlock);
     pw.addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
