@@ -5,47 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>For You 💛</title>
   <style>
-    :root { --bg:#0b1220; --glass: rgba(255,255,255,.08); --text:#e5e7eb; --muted:#94a3b8; }
+    :root { --bg:#0b1220; --glass: rgba(255,255,255,.08); --text:#e5e7eb; }
     *{box-sizing:border-box}
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: radial-gradient(1200px 800px at 10% 10%, #1f2937 0%, #0b1220 70%, #070b14 100%); color: var(--text); display: grid; place-items: center; min-height: 100vh; padding: 28px; }
-    .wrap{ width:min(820px, 96vw); display:flex; flex-direction:column; gap:18px }
+    .wrap{ width:min(820px, 96vw); display:flex; flex-direction:column; gap:18px; align-items:center }
     h1{ margin:0; text-align:center; letter-spacing:.6px }
-    .card{ padding:18px; background:var(--glass); border:1px solid rgba(255,255,255,.12); border-radius:16px; backdrop-filter: blur(8px) saturate(130%); }
-    .row{ display:flex; gap:12px; align-items:center }
-    .slider { appearance:none; width: 240px; height: 4px; border-radius:999px; background: rgba(255,255,255,.2); outline:none }
-    .slider::-webkit-slider-thumb { appearance:none; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.18) }
-    pre#msg { margin:0; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px }
-    small{ color:var(--muted) }
+    .card{ padding:18px; background:var(--glass); border:1px solid rgba(255,255,255,.12); border-radius:16px; backdrop-filter: blur(8px) saturate(130%); text-align:center }
+    button { padding:12px 24px; border:none; border-radius:8px; background:#4f46e5; color:white; font-size:1rem; cursor:pointer }
+    button:hover { background:#4338ca }
+    pre#msg { margin:0; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px; text-align:left }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Press Play 🎵</h1>
 
-    <!-- Minimal controls: only volume -->
-    <div class="card" aria-label="Audio controls">
-      <div class="row">
-        <label>Vol <input id="vol" class="slider" type="range" min="0" max="1" step="0.01" value="0.85" aria-label="Volume"></label>
-        <small id="hint">(Starts muted by your phone—move the slider once to unmute)</small>
-      </div>
-      <audio id="player" src="music.mp3" preload="metadata" loop playsinline autoplay muted></audio>
+    <div class="card" id="startCard">
+      <button id="playBtn">▶ Play</button>
     </div>
 
-    <!-- Morse-only message -->
-    <div class="card">
-      <h2 style="margin:6px 0">Your Note 💌</h2>
+    <div class="card" id="messageCard" style="display:none; width:100%">
+      <h2>Your Note 💌</h2>
       <pre id="msg"></pre>
     </div>
+
+    <audio id="player" src="music.mp3" preload="metadata" loop></audio>
   </div>
 
   <script>
-    // === Elements ===
     const audio = document.getElementById('player');
-    const vol = document.getElementById('vol');
+    const playBtn = document.getElementById('playBtn');
+    const startCard = document.getElementById('startCard');
+    const messageCard = document.getElementById('messageCard');
     const msg = document.getElementById('msg');
-    const hint = document.getElementById('hint');
 
-    // === Message (plain -> Morse) ===
     const PLAIN = `Hey love,\n\nThis little page is just for you. Press play, take a breath, and read slowly. You are my favorite feeling.\n\n— Yours`;
     const MORSE = {
       'a':'.-','b':'-...','c':'-.-.','d':'-..','e':'.','f':'..-.','g':'--.','h':'....','i':'..','j':'.---','k':'-.-','l':'.-..','m':'--','n':'-.','o':'---','p':'.--.','q':'--.-','r':'.-.','s':'...','t':'-','u':'..-','v':'...-','w':'.--','x':'-..-','y':'-.--','z':'--..',
@@ -61,20 +54,13 @@
           .join('   '))
         .join('\n');
     }
-    msg.textContent = encodeToMorse(PLAIN);
 
-    // === Audio setup ===
-    audio.loop = true;
-    audio.volume = +vol.value;
-
-    // Try autoplay muted; many browsers require a gesture to unmute
-    const tryPlay = () => audio.play().catch(()=>{});
-    tryPlay();
-
-    // Any user gesture (e.g., volume slide) will unmute & ensure playback
-    function unmuteAndPlay(){ audio.muted = false; tryPlay(); hint.textContent = '(Playing)'; document.removeEventListener('pointerdown', unmuteAndPlay); }
-    vol.addEventListener('input', ()=>{ audio.volume = +vol.value; if (audio.muted) unmuteAndPlay(); });
-    document.addEventListener('pointerdown', unmuteAndPlay, { once:true });
+    playBtn.addEventListener('click', () => {
+      audio.play().catch(()=>{});
+      startCard.style.display = 'none';
+      msg.textContent = encodeToMorse(PLAIN);
+      messageCard.style.display = 'block';
+    });
   </script>
 </body>
 </html>
