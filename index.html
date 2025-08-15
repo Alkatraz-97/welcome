@@ -47,12 +47,13 @@
         <input id="mp3File" type="file" accept="audio/*" class="btn" style="padding:8px" />
         <button id="load" class="btn">Load</button>
         <button id="play" class="btn primary">Play</button>
+        <button id="unmute" class="btn">Unmute</button>
         <button id="pause" class="btn">Pause</button>
         <button id="restart" class="btn">Restart</button>
         <label class="pill">Loop <input id="loop" type="checkbox" style="margin-left:6px"></label>
         <label class="pill">Vol <input id="vol" class="slider" type="range" min="0" max="1" step="0.01" value="0.85"></label>
       </div>
-      <small>Tip: Use a local file or host an MP3 next to this page as <code>music.mp3</code>. If a URL doesn’t end with a real audio file extension (or is a Google Drive/YouTube page), browsers will show <em>NotSupportedError</em>.</small>
+      <small>Tip: Use a local file or host an MP3 next to this page as <code>music.mp3</code>. If a URL isn’t a real audio file (e.g., YouTube/Drive viewer), browsers won’t play it.</small>
       <div style="margin-top:12px">
         <audio id="player" preload="metadata" controls style="width:100%" crossorigin="anonymous"></audio>
         <div class="row" style="margin-top:8px">
@@ -66,16 +67,12 @@
 
     <div class="card note">
       <h2>Your Note 💌</h2>
-      <div class="row" style="margin-bottom:8px">
-        <button id="morseBtn" class="btn">Morse</button>
-        <button id="plainBtn" class="btn" style="display:none">Plain text</button>
-      </div>
       <textarea id="note" style="width:100%; min-height: 170px; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color:var(--text)">Hey love,
 
 This little page is just for you. Press play, take a breath, and read slowly. You are my favorite feeling.
 
 — Yours</textarea>
-      <div class="hint"><small>Click <strong>Morse</strong> to turn your message into Morse code; click <strong>Plain text</strong> to switch back.</small></div>
+      <div class="hint"><small>Note loads in Morse by default.</small></div>
     </div>
 
     <div class="card">
@@ -111,6 +108,7 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
     const mp3File = document.getElementById('mp3File');
     const loadBtn = document.getElementById('load');
     const playBtn = document.getElementById('play');
+    const unmuteBtn = document.getElementById('unmute');
     const pauseBtn = document.getElementById('pause');
     const restartBtn = document.getElementById('restart');
     const loopChk = document.getElementById('loop');
@@ -120,8 +118,6 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
     const supportBadge = document.getElementById('supportBadge');
     const audioError = document.getElementById('audioError');
 
-    const morseBtn = document.getElementById('morseBtn');
-    const plainBtn = document.getElementById('plainBtn');
     const note = document.getElementById('note');
 
     const gate = document.getElementById('gate');
@@ -164,19 +160,16 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
 
     // === Wiring ===
     vol.addEventListener('input', ()=> audio.volume = +vol.value);
-    loopChk.addEventListener('change', ()=> audio.loop = loopChk.checked);
 
     function clearAudioError(){ audioError.textContent = ''; }
     function showAudioError(msg){ audioError.textContent = msg; }
 
     function setAudioSource(src){
       clearAudioError();
-      // Force reload source safely
       audio.pause();
       audio.removeAttribute('src');
       while (audio.firstChild) audio.removeChild(audio.firstChild);
 
-      // Create a <source> with a guessed type to help some browsers
       const source = document.createElement('source');
       source.src = src;
       if (/\.mp3(?:[?#].*)?$/i.test(src)) source.type = 'audio/mpeg';
@@ -192,16 +185,12 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
     loadBtn.addEventListener('click', ()=>{
       const url = (mp3Url.value || '').trim();
       if (!url) return;
-      if (isYouTube(url)) {
-        showAudioError('That looks like a YouTube link. Please use a direct .mp3/.m4a/.ogg/.wav URL or choose a local file.');
-        return;
-      }
-      if (isDrive(url)) {
-        showAudioError('Cloud drive viewer links often fail. Use a direct file URL that ends with .mp3 (or click Choose file).');
-      } else if (!isLikelyAudio(url)) {
-        showAudioError('This URL does not look like a direct audio file. It should end with .mp3, .m4a, .ogg, or .wav.');
-      }
+      if (isYouTube(url)) { showAudioError('YouTube is not a direct audio file. Use MP3 (or choose a local file).'); return; }
+      if (isDrive(url)) { showAudioError('Drive/Dropbox viewer links may fail. Get a direct .mp3 link or upload the MP3 next to this page.'); }
+      else if (!isLikelyAudio(url)) { showAudioError('This URL does not look like a direct audio file (.mp3/.m4a/.ogg/.wav).'); }
       setAudioSource(url);
+      // Auto-try play muted
+      audio.muted = true; audio.play().then(()=> setStatus('Playing (muted)')).catch(()=> setStatus('Loaded (tap Unmute/Play)'));
     });
 
     mp3File.addEventListener('change', ()=>{
@@ -209,22 +198,22 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
       if (!f) return;
       const objectUrl = URL.createObjectURL(f);
       setAudioSource(objectUrl);
-      setStatus('Loaded (local file)');
+      audio.muted = true; audio.play().then(()=> setStatus('Playing (muted)')).catch(()=> setStatus('Loaded (tap Unmute/Play)'));
     });
 
     playBtn.addEventListener('click', async ()=>{
       try { await audio.play(); } catch (e) { showAudioError('Play blocked by browser. Tap Play again after loading a valid audio source.'); console.log('Play blocked', e); }
     });
+    unmuteBtn.addEventListener('click', ()=>{ audio.muted = false; audio.play().catch(()=>{}); setStatus('Playing'); });
     pauseBtn.addEventListener('click', ()=> audio.pause());
     restartBtn.addEventListener('click', ()=>{ audio.currentTime = 0; audio.play().catch(()=>{}); });
 
     audio.addEventListener('timeupdate', ()=>{ timeLbl.textContent = `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`; });
     audio.addEventListener('loadedmetadata', ()=>{ timeLbl.textContent = `${fmt(0)} / ${fmt(audio.duration)}`; clearAudioError(); });
-    audio.addEventListener('play', ()=> setStatus('Playing'));
+    audio.addEventListener('play', ()=> setStatus(audio.muted ? 'Playing (muted)' : 'Playing'));
     audio.addEventListener('pause', ()=> setStatus('Paused'));
     audio.addEventListener('ended', ()=> setStatus('Ended'));
     audio.addEventListener('error', ()=>{
-      // Provide actionable guidance
       let msg = 'Cannot play this source. Possible reasons: not a real audio file, blocked by host, or unsupported format.';
       const url = (mp3Url.value||'').trim();
       if (isYouTube(url)) msg = 'You pasted a YouTube page, which is not a direct audio file. Use MP3 (or choose a local file).';
@@ -233,20 +222,13 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
       showAudioError(msg);
     });
 
-    // Sensible defaults
-    audio.volume = 0.85;
-    // If music.mp3 is present next to the page, this will work after deploy; otherwise choose a local file.
-    setAudioSource((mp3Url.value || '').trim());
-
     // === Morse ===
     const MORSE = {
       'a':'.-','b':'-...','c':'-.-.','d':'-..','e':'.','f':'..-.','g':'--.','h':'....','i':'..','j':'.---','k':'-.-','l':'.-..','m':'--','n':'-.','o':'---','p':'.--.','q':'--.-','r':'.-.','s':'...','t':'-','u':'..-','v':'...-','w':'.--','x':'-..-','y':'-.--','z':'--..',
       '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',
       '.':'.-.-.-', ',':'--..--', '?':'..--..', '!':'-.-.--', ':':'---...', '\'':' .----. ', '"':'.-..-.', '/':'-..-.', '(':'-.--.', ')':'-.--.-', '&':'.-...', '+':'.-.-.', '=':'-...-', '-':'-....-', '@':'.--.-.'
     };
-    let cache = note.value; let showingMorse = false;
     function encodeToMorse(text){
-      // Correct newline handling; use \n not raw line breaks
       return text.split('\n')
         .map(line => line.split(' ')
           .map(word => word.split('')
@@ -255,8 +237,6 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
           .join('   '))
         .join('\n');
     }
-    morseBtn.addEventListener('click', ()=>{ cache = note.value; note.value = encodeToMorse(cache); showingMorse = true; morseBtn.style.display='none'; plainBtn.style.display='inline-block'; });
-    plainBtn.addEventListener('click', ()=>{ note.value = cache; showingMorse = false; plainBtn.style.display='none'; morseBtn.style.display='inline-block'; });
 
     // === Tiny test harness ===
     function test(name, got, want){ const ok = got === want; return `${ok? '✅ PASS':'❌ FAIL'}  ${name}\n  got : ${got}\n  want: ${want}\n`; }
@@ -266,12 +246,29 @@ This little page is just for you. Press play, take a breath, and read slowly. Yo
       out.push(test('HELLO WORLD', encodeToMorse('HELLO WORLD'), '.... . .-.. .-.. ---   .-- --- .-. .-.. -..'));
       out.push(test('multiline', encodeToMorse('Hi\nHi'), '.... ..\n.... ..'));
       out.push(test('digits', encodeToMorse('2019'), '..--- ----- .---- ----.'));
-      out.push('\nAudio support: ' + supTxt + '\nIf you see NotSupportedError: ensure your URL ends with .mp3 (or pick a local file). Some cloud viewers/YouTube won\'t work.');
+      out.push('\nAudio support: ' + supTxt + '\nIf audio is muted on load, press Unmute once.');
       diagOut.textContent = out.join('\n');
     }
     runTestsBtn.addEventListener('click', runTests);
-    // auto-run once
-    runTests();
+
+    // === On load: auto-load music, loop, autoplay muted; default note to Morse ===
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // default loop + volume
+      loopChk.checked = true; audio.loop = true; audio.volume = +vol.value;
+
+      // set source from the URL field and try autoplay muted
+      const url = (mp3Url.value || '').trim();
+      if (url) {
+        setAudioSource(url);
+        audio.muted = true;
+        audio.play().then(()=> setStatus('Playing (muted, looping)')).catch(()=> setStatus('Loaded (tap Unmute/Play)'));
+      }
+
+      // Set note to Morse by default and lock it to Morse-only view
+      const orig = note.value;
+      note.value = encodeToMorse(orig);
+      // Morse-only: no toggle buttons shown (they were removed)
+    });
   </script>
 </body>
 </html>
