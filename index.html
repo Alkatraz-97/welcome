@@ -44,22 +44,19 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     </section>
   </div>
   <script>
-    // -------- page routing --------
     const page1=document.getElementById('page1'),page2=document.getElementById('page2'),nextBtn=document.getElementById('nextBtn'),fx=document.getElementById('fx');
     setTimeout(()=>nextBtn.classList.remove('hidden'),12000);
     function showPage(){if(location.hash==="#surprise"){page1.classList.add('hidden');page2.classList.remove('hidden');fx.style.display='block'}}
     addEventListener('hashchange',showPage);showPage();
 
-    // -------- media controls --------
     const audio=document.getElementById('player'),video=document.getElementById('video'),playBtn=document.getElementById('playBtn'),vol=document.getElementById('vol');
     playBtn.addEventListener('click',()=>{
       const v=+vol.value; audio.volume=v; video.volume=v;
       audio.play().catch(()=>{}); video.play().catch(()=>{});
-      burstHearts(9000); // ~9s of hearts
+      burstHearts(9000);
     });
     vol.addEventListener('input',()=>{const v=+vol.value; audio.volume=v; video.volume=v});
 
-    // -------- HEART CONFETTI (custom canvas; no external lib) --------
     const ctx=fx.getContext('2d');
     function resize(){
       const dpr=Math.min(window.devicePixelRatio||1,2);
@@ -69,7 +66,6 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     }
     addEventListener('resize',resize,{passive:true}); resize();
 
-    // Build a perfect heart once using a parametric curve, reuse via Path2D
     let HEART_PATH=null;
     function buildHeart(){
       const path=new Path2D();
@@ -78,7 +74,7 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
         const t=(i/240)*Math.PI*2;
         const x=16*Math.sin(t)**3;
         const y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
-        const px=x, py=-y; // invert Y for canvas
+        const px=x, py=-y;
         pts.push([px,py]);
         if(px<minX)minX=px; if(px>maxX)maxX=px; if(py<minY)minY=py; if(py>maxY)maxY=py;
       }
@@ -90,7 +86,7 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     }
     function drawHeart(x,y,size,rot,color){
       if(!HEART_PATH) HEART_PATH=buildHeart();
-      const scale=size/32; // parametric width ≈ 32
+      const scale=size/32;
       ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.scale(scale,scale);
       ctx.fillStyle=color; ctx.fill(HEART_PATH); ctx.restore();
     }
@@ -98,7 +94,7 @@ Aur Phir Dobara Mere Paas Se Phir Gaye hi Nahi ❤
     const COLORS=['#ff6b9a','#ff3b81','#ff1e56','#ff8fb3'];
     const particles=[]; let spawning=false, until=0, last=0;
     function spawn(){
-      if(particles.length>720) return; // cap for smoothness
+      if(particles.length>720) return;
       const size=14+Math.random()*18;
       particles.push({
         x: Math.random()*innerWidth,
