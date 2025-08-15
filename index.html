@@ -16,10 +16,20 @@
     .vol-control { display:flex; align-items:center; justify-content:center; gap:8px; }
     label { font-size:0.9rem; }
     .slider { appearance:none; width: 200px; height: 4px; border-radius:999px; background: rgba(255,255,255,.2); outline:none; }
-    .slider::-webkit-slider-thumb { appearance:none; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.18) }
+    .slider::-webkit-slider-thumb { appearance:none; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.18) }
     pre#msg { margin:0; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px; text-align:left }
+
+    /* Heart confetti */
+    .heart { position: fixed; top:-20px; font-size: 22px; pointer-events:none; will-change: transform, opacity; }
+    @keyframes fallHeart {
+      0% { transform: translateY(-40px) translateX(0) rotate(0deg) scale(1); opacity: 1; }
+      100% { transform: translateY(110vh) translateX(var(--dx)) rotate(180deg) scale(var(--scale)); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .heart { display:none; }
+    }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -53,7 +63,7 @@
     const MORSE = {
       'a':'.-','b':'-...','c':'-.-.','d':'-..','e':'.','f':'..-.','g':'--.','h':'....','i':'..','j':'.---','k':'-.-','l':'.-..','m':'--','n':'-.','o':'---','p':'.--.','q':'--.-','r':'.-.','s':'...','t':'-','u':'..-','v':'...-','w':'.--','x':'-..-','y':'-.--','z':'--..',
       '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',
-      '.':'.-.-.-', ',':'--..--', '?':'..--..', '!':'-.-.--', ':':'---...', '\'':' .----. ', '"':'.-..-.', '/':'-..-.', '(':'-.--.', ')':'-.--.-', '&':'.-...', '+':'.-.-.', '=':'-...-', '-':'-....-', '@':'.--.-.'
+      '.':'.-.-.-', ',':'--..--', '?':'..--..', '!':'-.-.--', ':':'---...', "'":'.----.', '"':'.-..-.', '/':'-..-.', '(':'-.--.', ')':'-.--.-', '&':'.-...', '+':'.-.-.', '=':'-...-', '-':'-....-', '@':'.--.-.'
     };
     function encodeToMorse(text){
       return text.split('\n')
@@ -65,32 +75,42 @@
         .join('\n');
     }
 
-    function launchHearts() {
-      const duration = 3 * 1000;
-      const end = Date.now() + duration;
+    // More confetti + slower fall (spawn in waves for performance)
+    function launchHearts(total = 10000) {
+      const colors = ['#ff6b9a', '#ff3b81', '#ff1e56', '#ff8fb3'];
+      const BATCH = 500; // hearts per frame (adjusted to avoid jank)
+      let created = 0;
 
-      (function frame() {
-        confetti({
-          particleCount: 5,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          shapes: ['heart'],
-          colors: ['#ff69b4', '#ff1493', '#ff0000']
-        });
-        confetti({
-          particleCount: 5,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          shapes: ['heart'],
-          colors: ['#ff69b4', '#ff1493', '#ff0000']
-        });
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
+      function spawn(n){
+        const frag = document.createDocumentFragment();
+        for (let i=0;i<n;i++){
+          const span = document.createElement('span');
+          span.className = 'heart';
+          span.textContent = '❤';
+          const left = Math.random()*100; 
+          const duration = 6 + Math.random()*6; // 6–12s = slower fall
+          const dx = (Math.random()*120 - 60) + 'px'; // wider drift
+          const scale = (1.0 + Math.random()*1.2).toFixed(2);
+          span.style.left = left + 'vw';
+          span.style.color = colors[Math.floor(Math.random()*colors.length)];
+          span.style.animation = `fallHeart ${duration}s ease-in forwards`;
+          span.style.setProperty('--dx', dx);
+          span.style.setProperty('--scale', scale);
+          frag.appendChild(span);
+          setTimeout(()=> span.remove(), duration*1000 + 500);
         }
-      })();
+        document.body.appendChild(frag);
+      }
+
+      function tick(){
+        const remain = total - created;
+        if (remain <= 0) return;
+        const n = Math.min(BATCH, remain);
+        spawn(n);
+        created += n;
+        requestAnimationFrame(tick);
+      }
+      tick();
     }
 
     playBtn.addEventListener('click', () => {
@@ -99,12 +119,20 @@
       startCard.style.display = 'none';
       msg.textContent = encodeToMorse(PLAIN);
       messageCard.style.display = 'block';
-      launchHearts();
+      launchHearts(10000); // 10k hearts, slower animation
     });
 
-    vol.addEventListener('input', () => {
-      audio.volume = +vol.value;
-    });
+    vol.addEventListener('input', () => { audio.volume = +vol.value; });
+
+    // Tests (console)
+    function t(name, got, want){ const ok = got === want; console.log(`${ok?'✅':'❌'} ${name}\n  got : ${got}\n  want: ${want}`); }
+    function runTests(){
+      t('SOS', encodeToMorse('SOS'), '... --- ...');
+      t('HELLO WORLD', encodeToMorse('HELLO WORLD'), '.... . .-.. .-.. ---   .-- --- .-. .-.. -..');
+      t('multiline', encodeToMorse('Hi\nHi'), '.... ..\n.... ..');
+      t('digits', encodeToMorse('2019'), '..--- ----- .---- ----.');
+    }
+    runTests();
   </script>
 </body>
 </html>
