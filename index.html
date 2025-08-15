@@ -76,7 +76,7 @@
     }
 
     // More confetti + slower fall (spawn in waves for performance)
-    function launchHearts(total = 10000) {
+    function launchHearts(total = 5000) {
       const colors = ['#ff6b9a', '#ff3b81', '#ff1e56', '#ff8fb3'];
       const BATCH = 500; // hearts per frame (adjusted to avoid jank)
       let created = 0;
@@ -136,3 +136,4 @@
   </script>
 </body>
 </html>
+
